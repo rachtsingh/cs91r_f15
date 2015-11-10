@@ -7,6 +7,7 @@ cmd = torch.CmdLine()
 cmd:option('-gram', 3, 'gram size')
 cmd:option('-hidden', 10, 'hidden layer size')
 cmd:option('-embedding', 20, 'embedding size')
+-- TODO: make learning rate, file name CMD options
 params = cmd:parse(arg)
 
 -- For renormalizing the lookup tables
@@ -23,7 +24,7 @@ end
 ------------------------
 -- Read in data
 ------------------------
-myFile = hdf5.open('language.hdf5', 'r')
+myFile = hdf5.open('language5.hdf5', 'r')
 train = myFile:read('train'):all()
 train_t = myFile:read('train_t'):all()
 test = myFile:read('test'):all()
@@ -78,8 +79,9 @@ end
 -- Train the model
 ------------------------
 model:reset()
-learning_rate = 1
-num_epochs = 10
+learning_rate = .05
+num_epochs = 1
+last_perp = 0
 
 for epoch = 1, num_epochs do
     nll = 0
@@ -95,7 +97,16 @@ for epoch = 1, num_epochs do
         model:backward(input, deriv)
         model:updateParameters(learning_rate)
     end
+
+    -- Calculate the perplexity, if it has increased since last
+    -- epoch, half the learning rate
     perplexity = validate(valid, valid_t)
+    if last_perp ~= 0 and perplexity > last_perp then
+        learning_rate = learning_rate / 2
+    end
+    last_perp = perplexity
+
+    -- Renormalize the weights of the lookup table
     renorm(E.weight, 1) -- th = 1 taken from Sasha's code
     print("Epoch:", epoch, nll, perplexity)
 end
@@ -105,19 +116,18 @@ end
 -- Compute predictions for test
 ----------------------
 
-preds = torch.ones(1)
+preds = torch.LongTensor(test:size(1))
 for j = 1, test:size(1)/batch_size do
     input = test:narrow(1, (j-1)*batch_size+1, batch_size):cuda()
     out = model:forward(input)
-    y,i = torch.max(out, 2)
-    preds = torch.cat(preds, i, 1)
+    y,i = torch.max(out:float(), 2)
+    for k = 1, batch_size do
+        preds[(j-1)*batch_size+1+k] = i[k]
+    end
 end
 
 file = hdf5.open("language_preds.hdf5","w")
 file:write("predictions", preds)
-file:write("E", E)
-file:write("V", V)
-file:write("U", U)
 file:close()
 
-print(validate(test, test_t))
+torch.save("model_test.nn", model)
