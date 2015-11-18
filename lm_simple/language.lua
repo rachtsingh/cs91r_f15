@@ -80,7 +80,7 @@ end
 ------------------------
 model:reset()
 learning_rate = .05
-num_epochs = 1
+num_epochs = 50
 last_perp = 0
 
 for epoch = 1, num_epochs do
@@ -126,8 +126,8 @@ for j = 1, test:size(1)/batch_size do
     end
 end
 
-file = hdf5.open("language_preds.hdf5","w")
+file = hdf5.open("language125_preds.hdf5","w")
 file:write("predictions", preds)
 file:close()
 
-torch.save("model_test.nn", model)
+torch.save("model125.nn", model)
