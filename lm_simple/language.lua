@@ -79,9 +79,14 @@ end
 -- Train the model
 ------------------------
 model:reset()
+-- reset the bias and gradBias
+V.bias:zero()
+V.gradBias:zero()
+
 learning_rate = .05
 num_epochs = 50
 last_perp = 0
+normalization_rate = 1
 
 for epoch = 1, num_epochs do
     nll = 0
@@ -95,7 +100,15 @@ for epoch = 1, num_epochs do
 
         deriv = criterion:backward(out, target)
         model:backward(input, deriv)
+        V.gradBias:zero()
         model:updateParameters(learning_rate)
+    end
+
+    -- every so often normalize all the output vectors
+    if epoch % normalization_rate == 0 then
+        for i=1,nV do
+            V.weight[i]:div(V.weight[i]:norm() + 1e7)
+        end
     end
 
     -- Calculate the perplexity, if it has increased since last
