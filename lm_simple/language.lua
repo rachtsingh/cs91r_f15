@@ -86,7 +86,9 @@ V.gradBias:zero()
 learning_rate = .05
 num_epochs = 50
 last_perp = 0
-normalization_rate = 1
+normalization_rate = 100 
+
+print("Number of iterations per epoch: ", train:size(1)/batch_size)
 
 for epoch = 1, num_epochs do
     nll = 0
@@ -102,13 +104,14 @@ for epoch = 1, num_epochs do
         model:backward(input, deriv)
         V.gradBias:zero()
         model:updateParameters(learning_rate)
-    end
 
-    -- every so often normalize all the output vectors
-    if epoch % normalization_rate == 0 then
-        for i=1,nV do
-            V.weight[i]:div(V.weight[i]:norm() + 1e7)
+        -- every so often normalize all the output vectors
+        if j % normalization_rate == 0 then
+            for i=1,nV do
+                V.weight[i]:div(V.weight[i]:norm() + 1e7)
+            end
         end
+    
     end
 
     -- Calculate the perplexity, if it has increased since last
